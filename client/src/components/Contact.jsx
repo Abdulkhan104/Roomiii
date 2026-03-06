@@ -1,256 +1,514 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { FaEnvelope, FaWhatsapp, FaPhoneAlt, FaUser, FaCheckCircle, FaPaperPlane, FaClock, FaShieldAlt } from 'react-icons/fa';
-import { MdOutlineVerified } from 'react-icons/md';
-import { BsLightningChargeFill } from 'react-icons/bs';
 
-const MESSAGE_TEMPLATES = [
-  "Hi, I'm interested in this property. Is it still available?",
-  "Can I schedule a site visit this weekend?",
-  "What are the lease terms and advance deposit required?",
-  "Are utilities included in the rent?",
+const TEMPLATES = [
+  { icon: "🏠", label: "Availability",  text: "Hi, I'm interested in this property. Is it still available?" },
+  { icon: "📅", label: "Site Visit",    text: "Can I schedule a site visit this weekend?" },
+  { icon: "📄", label: "Lease Terms",   text: "What are the lease terms and advance deposit required?" },
+  { icon: "💡", label: "Utilities",     text: "Are utilities included in the rent?" },
+];
+
+const TRUST_BADGES = [
+  { icon: "⚡", label: "Responds in ~1 hr", color: "#F05A28" },
+  { icon: "✅", label: "Verified identity",  color: "#4ADE80" },
+  { icon: "🔒", label: "Zero brokerage",    color: "#60A5FA" },
 ];
 
 export default function Contact({ listing }) {
-  const [landlord, setLandlord] = useState(null);
-  const [message, setMessage] = useState('');
+  const [landlord, setLandlord]           = useState(null);
+  const [message, setMessage]             = useState('');
   const [selectedTemplate, setSelectedTemplate] = useState(null);
-  const [charCount, setCharCount] = useState(0);
-  const [sending, setSending] = useState(false);
-  const [sent, setSent] = useState(false);
-
-  const onChange = (e) => {
-    setMessage(e.target.value);
-    setCharCount(e.target.value.length);
-    setSelectedTemplate(null);
-  };
-
-  const applyTemplate = (tpl, idx) => {
-    setMessage(tpl);
-    setCharCount(tpl.length);
-    setSelectedTemplate(idx);
-  };
-
-  const handleSend = () => {
-    if (!message.trim()) return;
-    setSending(true);
-    setTimeout(() => { setSending(false); setSent(true); }, 1200);
-  };
+  const [sending, setSending]             = useState(false);
+  const [sent, setSent]                   = useState(false);
+  const [activeChannel, setActiveChannel] = useState('email'); // email | whatsapp | call
+  const [callRequested, setCallRequested] = useState(false);
 
   useEffect(() => {
     const fetchLandlord = async () => {
       try {
-        const res = await fetch(`/api/user/${listing.userRef}`);
+        const res  = await fetch(`/api/user/${listing.userRef}`);
         const data = await res.json();
         setLandlord(data);
-      } catch (error) {
-        console.log(error);
-      }
+      } catch (e) { console.error(e); }
     };
     fetchLandlord();
   }, [listing.userRef]);
 
+  const applyTemplate = (tpl, idx) => {
+    setMessage(tpl.text);
+    setSelectedTemplate(idx);
+  };
+
+  const handleSend = (e) => {
+    if (!message.trim()) { e.preventDefault(); return; }
+    setSending(true);
+    setTimeout(() => { setSending(false); setSent(true); }, 1300);
+  };
+
+  const handleCallRequest = () => {
+    setCallRequested(true);
+    setTimeout(() => setCallRequested(false), 3000);
+  };
+
+  const reset = () => { setSent(false); setMessage(''); setSelectedTemplate(null); };
+
   return (
     <>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@700;800&family=Syne:wght@500;600;700&family=Lato:wght@300;400;700&display=swap');
-        :root{--brand:#dc4a11;--brand-light:#ff7b45;--dark:#0e0b08;--card:#1a1510;--border:rgba(255,255,255,.09);--text:#f0ebe5;--muted:#8a8078;--green:#22c55e;}
+        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Fraunces:ital,opsz,wght@0,9..144,700;1,9..144,500&display=swap');
 
-        .ct-root *{box-sizing:border-box;}
-        .ct-fd{font-family:'Cormorant Garamond',serif;}
-        .ct-fu{font-family:'Syne',sans-serif;}
-        .ct-fb{font-family:'Lato',sans-serif;}
+        .ct * { box-sizing: border-box; }
 
-        /* Card wrapper */
-        .ct-card{background:var(--card);border:1px solid var(--border);border-radius:18px;overflow:hidden;transition:border-color .3s;}
-        .ct-card:hover{border-color:rgba(220,74,17,.22);}
+        :root {
+          --or: #F05A28;
+          --or-dim: rgba(240,90,40,0.12);
+          --sur: #141418;
+          --sur2: #1C1C22;
+          --bor: rgba(255,255,255,0.08);
+          --tx: #F2EFE9;
+          --mu: rgba(242,239,233,0.42);
+          --gr: #4ADE80;
+          --bl: #60A5FA;
+        }
 
-        /* Header stripe */
-        .ct-header{background:linear-gradient(135deg,#1c1208 0%,#140f08 60%,#1e1309 100%);border-bottom:1px solid var(--border);padding:20px 22px;}
+        /* ── Shell ── */
+        .ct { font-family: 'Outfit', sans-serif; }
+        .ct-shell {
+          background: #0F0F12;
+          border: 1px solid var(--bor);
+          border-radius: 24px;
+          overflow: hidden;
+          transition: border-color 0.3s;
+        }
+        .ct-shell:hover { border-color: rgba(240,90,40,0.2); }
 
-        /* Avatar ring */
-        .ct-avatar-ring{width:52px;height:52px;border-radius:50%;background:linear-gradient(135deg,var(--brand),var(--brand-light));padding:2px;flex-shrink:0;}
-        .ct-avatar-inner{width:100%;height:100%;border-radius:50%;background:var(--dark);display:flex;align-items:center;justify-content:center;overflow:hidden;}
+        /* ── Header ── */
+        .ct-head {
+          background: linear-gradient(135deg, #141418 0%, #1A1A20 100%);
+          border-bottom: 1px solid var(--bor);
+          padding: 22px 24px 18px;
+          position: relative; overflow: hidden;
+        }
+        .ct-head::before {
+          content: '';
+          position: absolute; top: -60px; right: -60px;
+          width: 200px; height: 200px; border-radius: 50%;
+          background: radial-gradient(circle, rgba(240,90,40,0.1) 0%, transparent 70%);
+          pointer-events: none;
+        }
+
+        /* Avatar */
+        .ct-av-ring {
+          width: 50px; height: 50px; border-radius: 50%;
+          padding: 2px;
+          background: linear-gradient(135deg, var(--or), #FF8A5B);
+          flex-shrink: 0;
+        }
+        .ct-av-inner {
+          width: 100%; height: 100%; border-radius: 50%;
+          background: #0F0F12;
+          display: flex; align-items: center; justify-content: center;
+          overflow: hidden; font-size: 1.3rem;
+        }
+        .ct-av-inner img { width: 100%; height: 100%; object-fit: cover; }
+
+        .ct-name {
+          font-family: 'Fraunces', serif;
+          font-size: 1.1rem; font-weight: 700; color: var(--tx);
+          display: flex; align-items: center; gap: 6px;
+        }
+        .ct-verified { color: var(--bl); font-size: 0.85rem; }
+        .ct-role { font-size: 0.74rem; color: var(--mu); margin-top: 2px; letter-spacing: 0.04em; }
+
+        .ct-online {
+          display: inline-flex; align-items: center; gap: 5px;
+          background: rgba(74,222,128,0.1); border: 1px solid rgba(74,222,128,0.22);
+          border-radius: 100px; padding: 4px 10px;
+          font-size: 10px; font-weight: 800;
+          letter-spacing: 0.1em; color: var(--gr);
+        }
+        .ct-online-dot {
+          width: 6px; height: 6px; border-radius: 50%;
+          background: var(--gr);
+          animation: blink 2s infinite;
+        }
+        @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.35} }
+
+        /* Property snippet */
+        .ct-snippet {
+          background: rgba(255,255,255,0.03);
+          border: 1px solid var(--bor);
+          border-radius: 12px; padding: 10px 14px;
+          display: flex; align-items: center; gap: 10px;
+          margin-top: 14px;
+        }
+        .ct-snippet-icon { font-size: 1rem; flex-shrink: 0; }
+        .ct-snippet-text { font-size: 0.8rem; color: var(--mu); line-height: 1.45; }
+        .ct-snippet-text strong { color: var(--tx); }
+
+        /* Trust row */
+        .ct-trust-row { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 14px; }
+        .ct-trust-item { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--mu); }
+
+        /* ── Channel tabs ── */
+        .ct-tabs {
+          display: grid; grid-template-columns: 1fr 1fr 1fr;
+          gap: 8px; padding: 18px 24px 0;
+        }
+        .ct-tab {
+          padding: 10px 8px;
+          background: var(--sur);
+          border: 1.5px solid var(--bor);
+          border-radius: 12px;
+          font-family: 'Outfit', sans-serif;
+          font-size: 0.78rem; font-weight: 700;
+          color: var(--mu); cursor: pointer;
+          display: flex; flex-direction: column; align-items: center; gap: 4px;
+          transition: all 0.2s;
+          letter-spacing: 0.04em;
+        }
+        .ct-tab .tab-icon { font-size: 1.2rem; }
+        .ct-tab.active {
+          border-color: var(--or);
+          background: var(--or-dim);
+          color: var(--tx);
+        }
+        .ct-tab:hover:not(.active) { border-color: rgba(255,255,255,0.16); color: var(--tx); }
+
+        /* ── Body ── */
+        .ct-body { padding: 20px 24px 24px; display: flex; flex-direction: column; gap: 16px; }
 
         /* Templates */
-        .ct-tpl{cursor:pointer;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:8px;padding:8px 12px;font-family:'Lato',sans-serif;font-size:12px;color:var(--muted);transition:all .2s;text-align:left;line-height:1.5;}
-        .ct-tpl:hover{border-color:rgba(220,74,17,.35);color:var(--text);background:rgba(220,74,17,.07);}
-        .ct-tpl.sel{border-color:rgba(220,74,17,.5);color:var(--brand-light);background:rgba(220,74,17,.1);}
+        .ct-tpl-label {
+          font-size: 10px; font-weight: 700;
+          letter-spacing: 0.16em; text-transform: uppercase;
+          color: var(--mu); margin-bottom: 8px;
+        }
+        .ct-tpl-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
+        @media (max-width: 460px) { .ct-tpl-grid { grid-template-columns: 1fr; } }
+        .ct-tpl {
+          background: var(--sur);
+          border: 1.5px solid var(--bor);
+          border-radius: 10px; padding: 10px 12px;
+          font-family: 'Outfit', sans-serif;
+          font-size: 0.78rem; color: var(--mu);
+          cursor: pointer; text-align: left;
+          transition: all 0.18s; line-height: 1.5;
+          display: flex; align-items: flex-start; gap: 8px;
+        }
+        .ct-tpl .tpl-icon { font-size: 0.9rem; flex-shrink: 0; margin-top: 1px; }
+        .ct-tpl:hover { border-color: rgba(240,90,40,0.3); color: var(--tx); background: var(--or-dim); }
+        .ct-tpl.sel { border-color: rgba(240,90,40,0.5); color: var(--tx); background: var(--or-dim); }
+
+        /* Divider */
+        .ct-div {
+          display: flex; align-items: center; gap: 10px;
+          font-size: 10px; font-weight: 700; letter-spacing: 0.12em;
+          text-transform: uppercase; color: rgba(242,239,233,0.18);
+        }
+        .ct-div::before, .ct-div::after { content:''; flex:1; height:1px; background: var(--bor); }
 
         /* Textarea */
-        .ct-area{font-family:'Lato',sans-serif;font-size:14px;background:rgba(255,255,255,.04);border:1.5px solid var(--border);border-radius:12px;padding:14px 16px;color:var(--text);width:100%;resize:none;transition:border-color .25s,box-shadow .25s;line-height:1.7;}
-        .ct-area:focus{outline:none;border-color:rgba(220,74,17,.5);box-shadow:0 0 0 3px rgba(220,74,17,.1);}
-        .ct-area::placeholder{color:var(--muted);}
+        .ct-area-wrap { position: relative; }
+        .ct-area {
+          width: 100%;
+          background: var(--sur);
+          border: 1.5px solid var(--bor);
+          border-radius: 14px;
+          padding: 13px 16px 32px 16px;
+          font-family: 'Outfit', sans-serif;
+          font-size: 0.88rem; color: var(--tx);
+          resize: none; outline: none;
+          transition: border-color 0.2s, box-shadow 0.2s;
+          line-height: 1.65;
+        }
+        .ct-area::placeholder { color: rgba(242,239,233,0.18); }
+        .ct-area:focus { border-color: rgba(240,90,40,0.45); box-shadow: 0 0 0 3px rgba(240,90,40,0.1); }
+        .ct-char {
+          position: absolute; bottom: 10px; right: 14px;
+          font-size: 10px; font-weight: 600;
+          transition: color 0.2s;
+        }
 
-        /* Buttons */
-        .ct-btn-primary{font-family:'Syne',sans-serif;font-weight:700;font-size:13px;letter-spacing:.05em;background:var(--brand);color:#fff;border:none;border-radius:10px;padding:13px 20px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;width:100%;transition:background .2s,transform .15s,box-shadow .2s;box-shadow:0 5px 20px rgba(220,74,17,.3);}
-        .ct-btn-primary:hover:not(:disabled){background:#b83a0c;transform:translateY(-1px);box-shadow:0 8px 28px rgba(220,74,17,.4);}
-        .ct-btn-primary:disabled{opacity:.55;cursor:not-allowed;transform:none;}
+        /* Action buttons */
+        .ct-btn-email {
+          width: 100%; padding: 14px;
+          background: var(--or); border: none; border-radius: 14px;
+          font-family: 'Outfit', sans-serif; font-size: 0.9rem; font-weight: 700;
+          color: #fff; cursor: pointer; text-decoration: none;
+          display: flex; align-items: center; justify-content: center; gap: 8px;
+          transition: transform 0.2s, box-shadow 0.2s;
+          box-shadow: 0 8px 24px rgba(240,90,40,0.3);
+        }
+        .ct-btn-email:hover:not([disabled]) { transform: translateY(-2px); box-shadow: 0 14px 36px rgba(240,90,40,0.42); }
+        .ct-btn-email[disabled] { opacity: 0.45; pointer-events: none; }
 
-        .ct-btn-wa{font-family:'Syne',sans-serif;font-weight:700;font-size:13px;letter-spacing:.04em;background:rgba(37,211,102,.12);color:#4ade80;border:1px solid rgba(37,211,102,.3);border-radius:10px;padding:12px 20px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;width:100%;transition:all .2s;text-decoration:none;}
-        .ct-btn-wa:hover{background:rgba(37,211,102,.2);border-color:rgba(37,211,102,.5);}
+        .ct-btn-wa {
+          width: 100%; padding: 13px;
+          background: rgba(37,211,102,0.1);
+          border: 1.5px solid rgba(37,211,102,0.25);
+          border-radius: 14px;
+          font-family: 'Outfit', sans-serif; font-size: 0.88rem; font-weight: 700;
+          color: var(--gr); cursor: pointer; text-decoration: none;
+          display: flex; align-items: center; justify-content: center; gap: 8px;
+          transition: background 0.2s, border-color 0.2s;
+        }
+        .ct-btn-wa:hover { background: rgba(37,211,102,0.18); border-color: rgba(37,211,102,0.45); }
 
-        .ct-btn-call{font-family:'Syne',sans-serif;font-weight:700;font-size:13px;letter-spacing:.04em;background:rgba(255,255,255,.05);color:var(--text);border:1px solid var(--border);border-radius:10px;padding:12px 20px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;width:100%;transition:all .2s;}
-        .ct-btn-call:hover{border-color:rgba(220,74,17,.35);color:var(--brand-light);background:rgba(220,74,17,.06);}
+        .ct-btn-call {
+          width: 100%; padding: 13px;
+          background: var(--sur);
+          border: 1.5px solid var(--bor);
+          border-radius: 14px;
+          font-family: 'Outfit', sans-serif; font-size: 0.88rem; font-weight: 700;
+          color: var(--mu); cursor: pointer;
+          display: flex; align-items: center; justify-content: center; gap: 8px;
+          transition: border-color 0.2s, color 0.2s, background 0.2s;
+        }
+        .ct-btn-call:hover { border-color: rgba(240,90,40,0.35); color: var(--tx); background: var(--or-dim); }
+        .ct-btn-call.done { border-color: rgba(74,222,128,0.3); color: var(--gr); background: rgba(74,222,128,0.08); }
 
-        /* Trust badges */
-        .ct-trust{display:flex;align-items:center;gap:6px;font-family:'Lato',sans-serif;font-size:11px;color:var(--muted);}
+        /* Spinner */
+        .ct-spin { width: 15px; height: 15px; border: 2px solid rgba(255,255,255,0.25); border-top-color: #fff; border-radius: 50%; animation: spin 0.7s linear infinite; }
+        @keyframes spin { to{transform:rotate(360deg)} }
 
-        /* Sent state */
-        @keyframes ct-pop{0%{transform:scale(.8);opacity:0}60%{transform:scale(1.08)}100%{transform:scale(1);opacity:1}}
-        .ct-sent{animation:ct-pop .45s ease forwards;}
+        /* Footer note */
+        .ct-note {
+          display: flex; align-items: flex-start; gap: 10px;
+          background: var(--sur);
+          border: 1px solid var(--bor);
+          border-radius: 12px; padding: 12px 14px;
+          font-size: 0.78rem; color: var(--mu); line-height: 1.6;
+        }
 
-        /* Spin */
-        @keyframes ct-spin{to{transform:rotate(360deg)}}
-        .ct-spin{animation:ct-spin .8s linear infinite;display:inline-block;}
+        /* ── Sent state ── */
+        .ct-sent-state { text-align: center; padding: 28px 12px; animation: popIn 0.4s ease; }
+        @keyframes popIn { from{opacity:0;transform:scale(0.85)} to{opacity:1;transform:scale(1)} }
+        .ct-sent-icon { font-size: 3rem; margin-bottom: 14px; }
+        .ct-sent-title { font-family: 'Fraunces', serif; font-size: 1.5rem; font-weight: 700; color: var(--tx); margin-bottom: 8px; }
+        .ct-sent-sub { font-size: 0.84rem; color: var(--mu); line-height: 1.65; max-width: 280px; margin: 0 auto; }
+        .ct-sent-again { display: inline-flex; align-items: center; gap: 7px; margin-top: 18px; padding: 10px 22px; background: var(--sur); border: 1.5px solid var(--bor); border-radius: 12px; font-family: 'Outfit', sans-serif; font-size: 0.82rem; font-weight: 700; color: var(--mu); cursor: pointer; transition: border-color 0.2s, color 0.2s; }
+        .ct-sent-again:hover { border-color: rgba(255,255,255,0.2); color: var(--tx); }
 
-        /* Response time badge */
-        .ct-badge{display:inline-flex;align-items:center;gap:5px;background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.2);border-radius:999px;padding:3px 10px;}
+        /* WhatsApp panel */
+        .ct-wa-panel { background: rgba(37,211,102,0.05); border: 1px solid rgba(37,211,102,0.15); border-radius: 14px; padding: 18px; text-align: center; }
+        .ct-wa-icon { font-size: 2.5rem; margin-bottom: 10px; }
+        .ct-wa-title { font-family: 'Fraunces', serif; font-size: 1.1rem; font-weight: 700; color: var(--tx); margin-bottom: 6px; }
+        .ct-wa-sub { font-size: 0.8rem; color: var(--mu); margin-bottom: 16px; line-height: 1.55; }
+
+        /* Call panel */
+        .ct-call-panel { background: var(--sur); border: 1px solid var(--bor); border-radius: 14px; padding: 18px; text-align: center; }
+        .ct-call-icon { font-size: 2.5rem; margin-bottom: 10px; }
+        .ct-call-title { font-family: 'Fraunces', serif; font-size: 1.1rem; font-weight: 700; color: var(--tx); margin-bottom: 6px; }
+        .ct-call-sub { font-size: 0.8rem; color: var(--mu); margin-bottom: 16px; line-height: 1.55; }
       `}</style>
 
       {landlord && (
-        <div className="ct-root">
-          <div className="ct-card">
+        <div className="ct">
+          <div className="ct-shell">
 
-            {/* ── Header: Landlord profile ── */}
-            <div className="ct-header">
-              <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 14 }}>
-                <div className="ct-avatar-ring">
-                  <div className="ct-avatar-inner">
+            {/* ── HEADER ── */}
+            <div className="ct-head">
+              {/* Landlord row */}
+              <div style={{ display:"flex", alignItems:"center", gap:14 }}>
+                <div className="ct-av-ring">
+                  <div className="ct-av-inner">
                     {landlord.avatar
-                      ? <img src={landlord.avatar} alt={landlord.username} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                      : <FaUser style={{ color: "var(--muted)", fontSize: 22 }} />
+                      ? <img src={landlord.avatar} alt={landlord.username} />
+                      : "👤"
                     }
                   </div>
                 </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
-                    <span className="ct-fu" style={{ fontWeight: 700, fontSize: 15, color: "var(--text)" }}>{landlord.username}</span>
-                    <MdOutlineVerified style={{ color: "#60a5fa", fontSize: 15 }} />
+                <div style={{ flex:1, minWidth:0 }}>
+                  <div className="ct-name">
+                    {landlord.username}
+                    <span className="ct-verified">✓</span>
                   </div>
-                  <div className="ct-fb" style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>Property Owner · Verified Landlord</div>
+                  <div className="ct-role">Property Owner · Verified Landlord</div>
                 </div>
-                <div className="ct-badge">
-                  <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#4ade80", display: "inline-block" }} />
-                  <span className="ct-fu" style={{ fontSize: 10, fontWeight: 700, color: "#4ade80", letterSpacing: ".06em" }}>ONLINE</span>
+                <div className="ct-online">
+                  <div className="ct-online-dot" />
+                  ONLINE
                 </div>
               </div>
 
               {/* Property snippet */}
-              <div style={{ background: "rgba(255,255,255,.04)", border: "1px solid var(--border)", borderRadius: 10, padding: "10px 14px", display: "flex", alignItems: "center", gap: 10 }}>
-                <BsLightningChargeFill style={{ color: "var(--brand)", fontSize: 14, flexShrink: 0 }} />
-                <span className="ct-fb" style={{ fontSize: 12, color: "var(--muted)", lineHeight: 1.5 }}>
-                  Enquiring about <span style={{ color: "var(--text)", fontWeight: 700 }}>{listing.name}</span>
+              <div className="ct-snippet">
+                <span className="ct-snippet-icon">⚡</span>
+                <span className="ct-snippet-text">
+                  Enquiring about <strong>{listing.name}</strong>
                 </span>
               </div>
 
-              {/* Meta row */}
-              <div style={{ display: "flex", gap: 16, marginTop: 12, flexWrap: "wrap" }}>
-                <div className="ct-trust">
-                  <FaClock style={{ color: "var(--brand)", fontSize: 11 }} />
-                  Responds within 1 hour
-                </div>
-                <div className="ct-trust">
-                  <FaShieldAlt style={{ color: "var(--brand)", fontSize: 11 }} />
-                  Verified identity
-                </div>
-                <div className="ct-trust">
-                  <FaCheckCircle style={{ color: "var(--green)", fontSize: 11 }} />
-                  Zero brokerage
-                </div>
+              {/* Trust badges */}
+              <div className="ct-trust-row">
+                {TRUST_BADGES.map(b => (
+                  <div key={b.label} className="ct-trust-item">
+                    <span style={{ fontSize:"0.8rem" }}>{b.icon}</span>
+                    {b.label}
+                  </div>
+                ))}
               </div>
             </div>
 
-            {/* ── Body ── */}
-            <div style={{ padding: "20px 22px", display: "flex", flexDirection: "column", gap: 16 }}>
+            {/* ── CHANNEL TABS ── */}
+            {!sent && (
+              <div className="ct-tabs">
+                {[
+                  { id:"email",    icon:"✉️",  label:"Email"    },
+                  { id:"whatsapp", icon:"💬",  label:"WhatsApp" },
+                  { id:"call",     icon:"📞",  label:"Callback" },
+                ].map(ch => (
+                  <button
+                    key={ch.id}
+                    className={`ct-tab ${activeChannel === ch.id ? "active" : ""}`}
+                    onClick={() => setActiveChannel(ch.id)}
+                  >
+                    <span className="tab-icon">{ch.icon}</span>
+                    {ch.label}
+                  </button>
+                ))}
+              </div>
+            )}
 
-              {/* Sent success state */}
+            {/* ── BODY ── */}
+            <div className="ct-body">
+
+              {/* ─ SUCCESS STATE ─ */}
               {sent ? (
-                <div className="ct-sent" style={{ textAlign: "center", padding: "24px 16px" }}>
-                  <div style={{ fontSize: 44, marginBottom: 12 }}>✅</div>
-                  <div className="ct-fd" style={{ fontSize: 22, fontWeight: 800, color: "var(--text)", marginBottom: 6 }}>Message Sent!</div>
-                  <div className="ct-fb" style={{ fontSize: 13, color: "var(--muted)", lineHeight: 1.7 }}>
-                    Your enquiry has been sent to <span style={{ color: "var(--text)", fontWeight: 700 }}>{landlord.username}</span>.<br />Expect a reply within 1 hour.
+                <div className="ct-sent-state">
+                  <div className="ct-sent-icon">🎉</div>
+                  <div className="ct-sent-title">Message Sent!</div>
+                  <div className="ct-sent-sub">
+                    Your enquiry reached <strong style={{ color:"var(--tx)" }}>{landlord.username}</strong>. Expect a reply within 1 hour.
                   </div>
-                  <button onClick={() => { setSent(false); setMessage(""); setCharCount(0); }}
-                    className="ct-btn-call" style={{ width: "auto", margin: "16px auto 0", padding: "10px 24px" }}>
-                    Send Another Message
+                  <button className="ct-sent-again" onClick={reset}>
+                    ← Send another message
                   </button>
                 </div>
               ) : (
-                <>
-                  {/* Quick templates */}
-                  <div>
-                    <div className="ct-fu" style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: ".14em", color: "var(--muted)", marginBottom: 8, fontWeight: 700 }}>Quick Messages</div>
-                    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                      {MESSAGE_TEMPLATES.map((tpl, i) => (
-                        <button key={i} className={`ct-tpl ${selectedTemplate === i ? "sel" : ""}`} onClick={() => applyTemplate(tpl, i)}>
-                          {tpl}
-                        </button>
-                      ))}
+
+                /* ─ EMAIL CHANNEL ─ */
+                activeChannel === "email" ? (
+                  <>
+                    <div>
+                      <div className="ct-tpl-label">Quick messages</div>
+                      <div className="ct-tpl-grid">
+                        {TEMPLATES.map((tpl, i) => (
+                          <button
+                            key={i}
+                            className={`ct-tpl ${selectedTemplate === i ? "sel" : ""}`}
+                            onClick={() => applyTemplate(tpl, i)}
+                          >
+                            <span className="tpl-icon">{tpl.icon}</span>
+                            {tpl.text}
+                          </button>
+                        ))}
+                      </div>
                     </div>
-                  </div>
 
-                  {/* Divider */}
-                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                    <div style={{ flex: 1, height: 1, background: "rgba(255,255,255,.07)" }} />
-                    <span className="ct-fu" style={{ fontSize: 10, color: "var(--muted)", letterSpacing: ".1em" }}>OR WRITE YOUR OWN</span>
-                    <div style={{ flex: 1, height: 1, background: "rgba(255,255,255,.07)" }} />
-                  </div>
+                    <div className="ct-div">or write your own</div>
 
-                  {/* Textarea */}
-                  <div style={{ position: "relative" }}>
-                    <textarea
-                      name="message" id="message" rows={4}
-                      value={message} onChange={onChange}
-                      placeholder="Write your message to the landlord…"
-                      className="ct-area"
-                      maxLength={500}
-                    />
-                    <span className="ct-fb" style={{ position: "absolute", bottom: 10, right: 14, fontSize: 11, color: charCount > 400 ? "var(--brand)" : "var(--muted)" }}>
-                      {charCount}/500
-                    </span>
-                  </div>
+                    <div className="ct-area-wrap">
+                      <textarea
+                        className="ct-area"
+                        rows={4}
+                        maxLength={500}
+                        placeholder="Write your message to the landlord…"
+                        value={message}
+                        onChange={e => { setMessage(e.target.value); setSelectedTemplate(null); }}
+                      />
+                      <span className="ct-char" style={{ color: message.length > 400 ? "#F05A28" : "rgba(242,239,233,0.28)" }}>
+                        {message.length}/500
+                      </span>
+                    </div>
 
-                  {/* Action buttons */}
-                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                    {/* Primary: mailto */}
                     <Link
-                      to={`mailto:${landlord.email}?subject=Regarding ${listing.name}&body=${message}`}
+                      to={`mailto:${landlord.email}?subject=Regarding ${encodeURIComponent(listing.name)}&body=${encodeURIComponent(message)}`}
                       onClick={handleSend}
-                      style={{ textDecoration: "none" }}
+                      style={{ textDecoration:"none" }}
                     >
-                      <button className="ct-btn-primary" disabled={!message.trim()}>
+                      <button
+                        className="ct-btn-email"
+                        disabled={!message.trim() || sending}
+                      >
                         {sending
-                          ? <><span className="ct-spin">⏳</span> Sending…</>
-                          : <><FaPaperPlane style={{ fontSize: 13 }} /> Send via Email</>
+                          ? <><div className="ct-spin" /> Sending…</>
+                          : <>✉️ Send via Email</>
                         }
                       </button>
                     </Link>
 
-                    {/* WhatsApp */}
+                    <div className="ct-note">
+                      <span style={{ fontSize:"1rem", flexShrink:0 }}>🔒</span>
+                      <span>Your contact info is <strong style={{ color:"var(--tx)" }}>never shared</strong> without consent. RooMoo verifies all landlords before listing.</span>
+                    </div>
+                  </>
+                )
+
+                /* ─ WHATSAPP CHANNEL ─ */
+                : activeChannel === "whatsapp" ? (
+                  <>
+                    <div className="ct-wa-panel">
+                      <div className="ct-wa-icon">💬</div>
+                      <div className="ct-wa-title">Chat on WhatsApp</div>
+                      <div className="ct-wa-sub">Message {landlord.username} directly on WhatsApp — usually replied to in minutes.</div>
+                      <a
+                        href={`https://wa.me/?text=${encodeURIComponent(`Hi, I'm interested in "${listing.name}". Is it still available?`)}`}
+                        target="_blank" rel="noopener noreferrer"
+                        className="ct-btn-wa"
+                        style={{ display:"inline-flex", width:"auto", padding:"12px 28px" }}
+                      >
+                        💬 Open WhatsApp Chat
+                      </a>
+                    </div>
+
+                    <div className="ct-div">or include a custom message</div>
+
+                    <div className="ct-area-wrap">
+                      <textarea
+                        className="ct-area"
+                        rows={3}
+                        maxLength={500}
+                        placeholder="Add a custom note (optional)…"
+                        value={message}
+                        onChange={e => setMessage(e.target.value)}
+                      />
+                      <span className="ct-char" style={{ color:"rgba(242,239,233,0.28)" }}>{message.length}/500</span>
+                    </div>
+
                     <a
                       href={`https://wa.me/?text=${encodeURIComponent(`Hi, I'm interested in "${listing.name}". ${message}`)}`}
                       target="_blank" rel="noopener noreferrer"
                       className="ct-btn-wa"
                     >
-                      <FaWhatsapp style={{ fontSize: 16 }} /> WhatsApp Landlord
+                      💬 Send WhatsApp Message
                     </a>
+                  </>
+                )
 
-                    {/* Call */}
-                    <button className="ct-btn-call">
-                      <FaPhoneAlt style={{ fontSize: 12 }} /> Request a Callback
-                    </button>
-                  </div>
+                /* ─ CALLBACK CHANNEL ─ */
+                : (
+                  <>
+                    <div className="ct-call-panel">
+                      <div className="ct-call-icon">📞</div>
+                      <div className="ct-call-title">Request a Callback</div>
+                      <div className="ct-call-sub">Leave your number and {landlord.username} will call you back within 1 hour during business hours (9am–7pm).</div>
+                      <button
+                        className={`ct-btn-call ${callRequested ? "done" : ""}`}
+                        style={{ width:"auto", padding:"12px 28px", display:"inline-flex" }}
+                        onClick={handleCallRequest}
+                      >
+                        {callRequested ? <>✓ Request Sent!</> : <>📞 Request Callback</>}
+                      </button>
+                    </div>
 
-                  {/* Footer trust note */}
-                  <div style={{ display: "flex", alignItems: "flex-start", gap: 8, padding: "10px 14px", background: "rgba(255,255,255,.03)", borderRadius: 10, border: "1px solid var(--border)" }}>
-                    <FaShieldAlt style={{ color: "var(--brand)", fontSize: 14, marginTop: 1, flexShrink: 0 }} />
-                    <p className="ct-fb" style={{ fontSize: 12, color: "var(--muted)", lineHeight: 1.65 }}>
-                      Your contact info is <span style={{ color: "var(--text)" }}>never shared</span> without your consent. Roomiii verifies all landlords before listing.
-                    </p>
-                  </div>
-                </>
+                    <div className="ct-note">
+                      <span style={{ fontSize:"1rem", flexShrink:0 }}>🕐</span>
+                      <span>Callback hours: <strong style={{ color:"var(--tx)" }}>Mon – Sat, 9am to 7pm IST.</strong> We'll confirm your request via email.</span>
+                    </div>
+                  </>
+                )
               )}
             </div>
           </div>
