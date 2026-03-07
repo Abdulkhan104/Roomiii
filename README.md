@@ -87,3 +87,112 @@ Have questions, suggestions, or just want to say hi? Reach out to us at [info@ro
 Thank you for choosing RooMoo! Happy house-hunting!
 
 **Disclaimer:** RooMoo is a college project, and all listings are subject to availability and accuracy. Please verify details before making any decisions.
+
+
+
+
+
+
+
+
+
+
+
+********************************************************  Deploy IN AWS *************************************************************
+
+
+# Roomiii Project Setup
+
+This README contains a **single script** to set up the Roomiii project on an Amazon Linux environment.  
+
+> **Usage:** Copy all the code below into a file called `setup.sh` and run:  
+> ```bash
+> sudo bash setup.sh
+> ```
+
+```bash
+#!/bin/bash
+
+# ========================================================
+# Roomiii Project Setup Script (All-in-One)
+# ========================================================
+
+echo "Starting Roomiii setup..."
+
+# -------------------------
+# 1. Install Node.js and PM2
+# -------------------------
+echo "Installing Node.js and PM2..."
+sudo yum install -y nodejs
+sudo npm install -g pm2 serve
+
+# -------------------------
+# 2. Install Project Dependencies
+# -------------------------
+echo "Installing backend dependencies..."
+npm install mongoose dotenv cors cookie-parser express
+
+# -------------------------
+# 3. Install MongoDB
+# -------------------------
+echo "Setting up MongoDB repo..."
+sudo bash -c 'cat > /etc/yum.repos.d/mongodb-org-7.0.repo <<EOF
+[mongodb-org-7.0]
+name=MongoDB Repository
+baseurl=https://repo.mongodb.org/yum/amazon/2/mongodb-org/7.0/x86_64/
+gpgcheck=1
+enabled=1
+gpgkey=https://pgp.mongodb.com/server-7.0.asc
+EOF'
+
+echo "Installing MongoDB..."
+sudo yum install -y mongodb-org
+sudo systemctl start mongod
+sudo systemctl enable mongod
+
+# -------------------------
+# 4. Configure Environment Variables
+# -------------------------
+echo "Setting up .env file..."
+cd /root/Roomiii || { echo "Project directory not found!"; exit 1; }
+
+cat > .env <<EOF
+PORT=3000
+MONGO=mongodb+srv://roomuser:Cloud%401234@cluster0.hh94cgv.mongodb.net/roomoo?retryWrites=true&w=majority&appName=Cluster0
+JWT_SECRET=mySuperSecretKey
+EOF
+
+# -------------------------
+# 5. Build the Client
+# -------------------------
+if [ -d "client" ]; then
+    echo "Installing and building client..."
+    cd client || exit
+    npm install
+    npm run build
+    cd ..
+else
+    echo "Client directory not found. Skipping client build."
+fi
+
+# -------------------------
+# 6. Start the Backend
+# -------------------------
+echo "Installing backend dependencies and starting server..."
+npm install
+
+# Optional: run in background using PM2
+pm2 start index.js --name roomiii || npm start &
+
+# -------------------------
+# 7. Install Git LFS
+# -------------------------
+echo "Installing Git LFS..."
+curl -s https://packagecloud.io/install/repositories/github/git-lfs/script.rpm.sh | sudo bash
+sudo yum install -y git-lfs
+git lfs pull
+
+# -------------------------
+# Done
+# -------------------------
+echo "Roomiii setup complete! Check your server on PORT=3000"
